@@ -20,14 +20,47 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const spotsLeft = details.max_participants - details.participants.length;
 
+
         activityCard.innerHTML = `
           <h4>${name}</h4>
           <p>${details.description}</p>
           <p><strong>Schedule:</strong> ${details.schedule}</p>
           <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
+          <p><strong>Participants:</strong></p>
+          <ul class="participants-list">
+            ${details.participants.map(email => `
+              <li style="list-style-type:none;display:flex;align-items:center;gap:8px;">
+                <span>${email}</span>
+                <button class="delete-participant" data-activity="${name}" data-email="${email}" title="Eliminar" style="background:none;border:none;color:#c62828;cursor:pointer;font-size:18px;line-height:1;">&#10006;</button>
+              </li>
+            `).join('')}
+          </ul>
         `;
 
+
         activitiesList.appendChild(activityCard);
+
+        // Agregar manejador de eventos para eliminar participante
+        activityCard.querySelectorAll('.delete-participant').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            const email = btn.getAttribute('data-email');
+            const activity = btn.getAttribute('data-activity');
+            if (!confirm(`¿Eliminar a ${email} de ${activity}?`)) return;
+            try {
+              const response = await fetch(`/activities/${encodeURIComponent(activity)}/unregister?email=${encodeURIComponent(email)}`, {
+                method: 'POST',
+              });
+              if (response.ok) {
+                fetchActivities();
+              } else {
+                const result = await response.json();
+                alert(result.detail || 'No se pudo eliminar el participante.');
+              }
+            } catch (err) {
+              alert('Error de red al eliminar participante.');
+            }
+          });
+        });
 
         // Add option to select dropdown
         const option = document.createElement("option");
@@ -62,6 +95,8 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+        // Actualizar la lista de actividades y participantes
+        fetchActivities();
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
